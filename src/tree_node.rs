@@ -1,27 +1,38 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use std::rc::{Rc, Weak};
+use std::rc::{Rc};
 
 use serde::{Serialize, Serializer};
 use serde::ser::SerializeStruct;
+use crate::tree_node_trait::TreeNodeTrait;
 
+/// 树节点
 #[derive(Debug)]
 pub struct TreeNode<T>
     where
-        T: Serialize,
+        T: Serialize + Clone,
 {
+    /// 节点ID
     id: String,
+
+    /// 节点名称
     name: String,
+
+    /// 上级节点ID
     parent_id: String,
-    // parent: Option<Weak<TreeNode<T>>>,
+
+    ///权重
     weight: u32,
+
+    /// 扩展数据
     extra: HashMap<String, T>,
+
     children: Vec<Rc<RefCell<TreeNode<T>>>>,
 }
 
 
-impl<T> Serialize for TreeNode<T> where T: Serialize {
+impl<T> Serialize for TreeNode<T> where T: Serialize + Clone {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         let mut state = serializer.serialize_struct("TreeNode", 6)?;
         state.serialize_field("id", &self.id)?;
@@ -38,7 +49,7 @@ impl<T> Serialize for TreeNode<T> where T: Serialize {
     }
 }
 
-impl<T> TreeNode<T> where T: Serialize {
+impl<T> TreeNode<T> where T: Serialize + Clone {
     pub fn new(id: String, name: String, parent_id: String, weight: u32) -> TreeNode<T> {
         TreeNode {
             id,
@@ -56,10 +67,11 @@ impl<T> TreeNode<T> where T: Serialize {
         // child.parent = Some(Rc::downgrade(self));
     }
 
+
     pub fn build_from_list(list: Vec<TreeNode<T>>) -> HashMap<String, Rc<RefCell<TreeNode<T>>>> {
         let map: Rc<RefCell<HashMap<String, Rc<RefCell<TreeNode<T>>>>>> =
             Rc::new(RefCell::new(list.into_iter().map(|x| (x.id.clone(), Rc::new(RefCell::new(x)))).collect()));
-        let mut map = map.borrow_mut();
+        let map = map.borrow_mut();
         for (_, node) in map.clone().iter_mut() {
             let parent_id = node.borrow().parent_id.clone();
             if let Some(parent) = map.clone().get_mut(&parent_id) {
@@ -68,6 +80,45 @@ impl<T> TreeNode<T> where T: Serialize {
         }
         let x = map.clone();
         x
+    }
+}
+
+
+impl<T> TreeNodeTrait for TreeNode<T> where T: Serialize + Clone {
+    fn set_id(&mut self, id: String) -> &mut Self {
+        self.id = id;
+        self
+    }
+
+    fn get_id(&self) -> String {
+        self.id.clone()
+    }
+
+    fn set_parent_id(&mut self, parent_id: String) -> &mut Self {
+        self.parent_id = parent_id;
+        self
+    }
+
+    fn get_parent_id(&self) -> String {
+        self.parent_id.clone()
+    }
+
+    fn set_name(&mut self, name: String) -> &mut Self {
+        self.name = name;
+        self
+    }
+
+    fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn set_weight(&mut self, weight: u32) -> &mut Self {
+        self.weight = weight;
+        self
+    }
+
+    fn get_weight(&self) -> u32 {
+        self.weight
     }
 }
 
